@@ -5,22 +5,37 @@ AWS infrastructure for Canvas LMS data extraction with EC2 instance management, 
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    AWS EC2 (r7i.2xlarge)                        │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                   Extraction Pipeline                    │   │
-│  │  ┌──────────┐  ┌─────────────┐  ┌───────────────────┐  │   │
-│  │  │ MAPPING  │→ │ EXTRACTION  │→ │    DOWNLOADS      │  │   │
-│  │  │ 30-60s   │  │   2-10min   │  │     1-30min       │  │   │
-│  │  │ ~500MB   │  │   2-4GB     │  │     1-2GB         │  │   │
-│  │  └──────────┘  └─────────────┘  └───────────────────┘  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─────────────────┐  ┌─────────────────────────────────────┐  │
-│  │ CloudWatch Logs │  │        CloudWatch Metrics           │  │
-│  │  Real-time      │  │  CPU, Memory, Network               │  │
-│  └─────────────────┘  └─────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         AWS Multi-Instance Architecture                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────┐     │
+│  │                    t3.medium (Auth & Updates)                       │     │
+│  │  ┌─────────────────────────┐  ┌──────────────────────────────┐    │     │
+│  │  │   Browser Auth Server   │  │     Incremental Updates      │    │     │
+│  │  │   Socket.IO Streaming   │  │     Change Detection         │    │     │
+│  │  │   Cookie Transfer       │  │     Delta Sync               │    │     │
+│  │  └─────────────────────────┘  └──────────────────────────────┘    │     │
+│  │                          Always available, low cost                │     │
+│  └────────────────────────────────────────────────────────────────────┘     │
+│                                      │                                       │
+│                                      │ Cookies                               │
+│                                      ▼                                       │
+│  ┌────────────────────────────────────────────────────────────────────┐     │
+│  │                  r7i.2xlarge (Initial Extraction)                   │     │
+│  │  ┌──────────┐  ┌─────────────┐  ┌───────────────────┐             │     │
+│  │  │ MAPPING  │→ │ EXTRACTION  │→ │    DOWNLOADS      │             │     │
+│  │  │ 30-60s   │  │   2-10min   │  │     1-30min       │             │     │
+│  │  │ ~500MB   │  │   2-4GB     │  │     1-2GB         │             │     │
+│  │  └──────────┘  └─────────────┘  └───────────────────┘             │     │
+│  │                    Spun up on-demand, hibernates when idle         │     │
+│  └────────────────────────────────────────────────────────────────────┘     │
+│                                                                              │
+│  ┌─────────────────┐  ┌─────────────────────────────────────┐              │
+│  │ CloudWatch Logs │  │        CloudWatch Metrics           │              │
+│  │  Real-time      │  │  CPU, Memory, Network               │              │
+│  └─────────────────┘  └─────────────────────────────────────┘              │
+└─────────────────────────────────────────────────────────────────────────────┘
          ↑
          │ Socket.IO (Port 3002)
          │
@@ -30,25 +45,34 @@ AWS infrastructure for Canvas LMS data extraction with EC2 instance management, 
 └─────────────────┘
 ```
 
+## Instance Roles
+
+| Instance | Type | Role | Availability | Cost Model |
+|----------|------|------|--------------|------------|
+| **Auth Server** | t3.medium | Browser auth streaming, cookie management | Always on | ~$30/month |
+| **Update Server** | t3.medium | Incremental updates, change detection | Always on | Shared with auth |
+| **Extraction Server** | r7i.2xlarge | Full initial extraction, bulk downloads | On-demand | ~$0.53/hour |
+
 ## Resource Requirements
 
 ### Instance Sizing
 
-| Instance Type | vCPUs | RAM | Concurrent Requests | Parallel Courses | Total Capacity |
-|--------------|-------|-----|---------------------|------------------|----------------|
-| Local (dev)  | 4     | 8GB | 40-50               | 5                | ~250           |
-| t3.large     | 2     | 8GB | 50-60               | 8                | ~480           |
-| **r7i.2xlarge** | 8  | 64GB| 80-100              | 20               | **~2000**      |
-| r7i.4xlarge  | 16    | 128GB| 150-200            | 40               | ~8000          |
+| Instance Type | vCPUs | RAM | Concurrent Requests | Parallel Courses | Use Case |
+|--------------|-------|-----|---------------------|------------------|----------|
+| **t3.medium** | 2 | 4GB | 20-30 | 3-5 | Auth + Updates |
+| t3.large | 2 | 8GB | 50-60 | 8 | Light extraction |
+| **r7i.2xlarge** | 8 | 64GB | 80-100 | 20 | Initial extraction |
+| r7i.4xlarge | 16 | 128GB | 150-200 | 40 | Heavy extraction |
 
 ### Per-Phase Resource Usage
 
-| Phase | Duration | Memory | Requests/Course | Notes |
-|-------|----------|--------|-----------------|-------|
-| MAPPING | 30-60s | ~500MB | 100-200 | URL discovery |
-| EXTRACTION | 2-10min | 2-4GB | 500-2000 | Content extraction |
-| DOWNLOADS | 1-30min | 1-2GB | Variable | File downloads |
-| UPDATE | 10-30s | 200-500MB | 50-100 | Incremental sync |
+| Phase | Instance | Duration | Memory | Requests/Course |
+|-------|----------|----------|--------|-----------------|
+| AUTH | t3.medium | 1-2min | ~200MB | N/A |
+| UPDATE | t3.medium | 10-30s | 200-500MB | 50-100 |
+| MAPPING | r7i.2xlarge | 30-60s | ~500MB | 100-200 |
+| EXTRACTION | r7i.2xlarge | 2-10min | 2-4GB | 500-2000 |
+| DOWNLOADS | r7i.2xlarge | 1-30min | 1-2GB | Variable |
 
 ## Installation
 
@@ -60,18 +84,26 @@ cp .env.example .env
 
 ## Usage
 
-### Full Extraction (AWS)
+### Browser Authentication (t3.medium)
 
 ```bash
-# Start EC2 instance, run extraction, collect metrics, hibernate
-npm run extract
+# Deploy streaming auth server to t3.medium
+npm run deploy-streaming
+# Access at http://<t3-medium-ip>:3002
 ```
 
-### Deploy Streaming Server
+### Incremental Updates (t3.medium)
 
 ```bash
-# Deploy browser streaming auth to EC2
-npm run deploy-streaming
+# Run incremental update check and sync
+npm run update
+```
+
+### Full Initial Extraction (r7i.2xlarge)
+
+```bash
+# Start r7i.2xlarge, run full extraction, collect metrics, hibernate
+npm run extract
 ```
 
 ### Manual Operations
@@ -79,9 +111,6 @@ npm run deploy-streaming
 ```bash
 # Run crawler locally
 npm run crawl
-
-# Run incremental update
-npm run update
 
 # Force stop EC2 instance
 npm run stop-instance
@@ -93,11 +122,12 @@ npm run stop-instance
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `AWS_INSTANCE_ID` | EC2 instance ID | Required |
+| `AWS_INSTANCE_ID` | EC2 instance ID (extraction) | Required |
+| `AWS_AUTH_INSTANCE_ID` | EC2 instance ID (auth/updates) | Required |
 | `AWS_KEY_FILE` | Path to SSH key | Required |
 | `AWS_REGION` | AWS region | us-east-1 |
 | `MAX_CONCURRENCY` | Concurrent requests | Auto-detected |
-| `PARALLEL_COURSES` | Parallel course processing | 20 (AWS) / 5 (local) |
+| `PARALLEL_COURSES` | Parallel course processing | 20 (r7i) / 5 (t3) |
 | `STREAMING_PORT` | Auth streaming port | 3002 |
 
 ### Concurrency Auto-Detection
@@ -105,27 +135,51 @@ npm run stop-instance
 Concurrency is automatically optimized based on instance type:
 
 ```javascript
-const MAX_CONCURRENCY = isAWS
-  ? (isMultiCourse ? 100 : 80)   // r7i.2xlarge optimized
-  : (isMultiCourse ? 50 : 40);   // Local development
+// r7i.2xlarge - Full extraction
+const MAX_CONCURRENCY = isMultiCourse ? 100 : 80;
+const MAX_PARALLEL_COURSES = 20;
+
+// t3.medium - Updates only
+const MAX_CONCURRENCY = isMultiCourse ? 30 : 20;
+const MAX_PARALLEL_COURSES = 5;
 ```
+
+## Workflow
+
+### Initial Setup
+1. Deploy auth streaming server to t3.medium (always on)
+2. Authenticate via browser → cookies stored on t3.medium
+3. Spin up r7i.2xlarge for initial extraction
+4. Transfer cookies from t3.medium → r7i.2xlarge
+5. Run full extraction pipeline
+6. Hibernate r7i.2xlarge when complete
+
+### Daily Updates
+1. t3.medium runs incremental update check
+2. Change detection compares against last sync
+3. Only modified content is re-extracted
+4. No need to spin up r7i.2xlarge for updates
+
+### Re-Authentication
+1. When cookies expire, user re-authenticates via t3.medium
+2. New cookies automatically available for both instances
 
 ## Project Structure
 
 ```
 ├── src/
 │   ├── core/
-│   │   └── extract-cookies-streaming.js  # Browser auth streaming
+│   │   └── extract-cookies-streaming.js  # Browser auth streaming (t3.medium)
 │   ├── crawler/
-│   │   └── canvas-crawler.js             # Phased extraction crawler
+│   │   └── canvas-crawler.js             # Phased extraction (r7i.2xlarge)
 │   └── utils/
 │       └── cookie-helpers.js             # Cookie path utilities
 ├── scripts/
 │   ├── utils/
-│   │   └── update.js                     # Incremental update checker
+│   │   └── update.js                     # Incremental updates (t3.medium)
 │   └── aws/
 │       ├── run-aws-extraction.js         # AWS orchestrator
-│       ├── deploy-streaming.js           # Deploy streaming server
+│       ├── deploy-streaming.js           # Deploy auth server
 │       ├── force-stop-instance.js        # Emergency stop
 │       └── utils/
 │           ├── aws-ec2-manager.js        # EC2 management (760 lines)
@@ -155,19 +209,14 @@ The `aws-ec2-manager.js` module provides:
 - Automatic log group/stream creation
 - Periodic flush with configurable interval
 
-## Browser Authentication
+## Cost Optimization
 
-The streaming server enables browser-based authentication:
-
-1. Deploy streaming server to EC2
-2. Connect from local browser via Socket.IO
-3. Complete authentication in browser
-4. Cookies transferred to EC2 for extraction
-
-```bash
-# Deploy and access at http://<ec2-ip>:3002
-npm run deploy-streaming
-```
+| Component | Strategy | Estimated Cost |
+|-----------|----------|----------------|
+| t3.medium (auth/updates) | Always on | ~$30/month |
+| r7i.2xlarge (extraction) | On-demand + hibernate | ~$5-20/month |
+| CloudWatch | Minimal logging | ~$1-5/month |
+| **Total** | | **~$36-55/month** |
 
 ## License
 
