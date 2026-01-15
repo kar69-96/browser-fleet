@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# AWS Keys
+*.pem
+*.key
+
+# Cookies and credentials
+cookies/
+*.cookies.json
+
+# Output
+output/
+downloads/
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build
+dist/
+build/
+
+# Temporary
+tmp/
+temp/
+*.tmp

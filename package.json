@@ -1,0 +1,37 @@
+{
+  "name": "canvas-aws-infrastructure",
+  "version": "1.0.0",
+  "description": "AWS infrastructure for Canvas LMS data extraction with EC2 management, CloudWatch monitoring, and browser-based authentication",
+  "main": "scripts/aws/run-aws-extraction.js",
+  "scripts": {
+    "extract": "node scripts/aws/run-aws-extraction.js",
+    "deploy-streaming": "node scripts/aws/deploy-streaming.js",
+    "stop-instance": "node scripts/aws/force-stop-instance.js",
+    "update": "node scripts/utils/update.js",
+    "crawl": "node src/crawler/canvas-crawler.js"
+  },
+  "keywords": [
+    "aws",
+    "ec2",
+    "canvas-lms",
+    "web-extraction",
+    "cloudwatch",
+    "playwright",
+    "crawlee"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch": "^3.490.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.490.0",
+    "@aws-sdk/client-ec2": "^3.490.0",
+    "crawlee": "^3.7.0",
+    "express": "^4.18.2",
+    "playwright": "^1.40.0",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
