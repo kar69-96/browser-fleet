@@ -83,7 +83,7 @@ graph LR
 
 **Capacity**: 10 instances × 3 sessions = **30 concurrent users**
 
-## Technical Highlights
+## Key Features
 
 - **Lambda-based auto-scaling** — 5 Lambda functions orchestrate a pool of 1-10 EC2 instances, triggered by EventBridge rules every 30-60 seconds
 - **EC2 hibernation** — Instances hibernate instead of stopping, reducing resume time from ~90s (cold start) to ~30s
