@@ -1,8 +1,6 @@
 # aws-infra
 
-Auto-scaling AWS infrastructure for browser-based authentication and web scraping. Manages a pool of EC2 instances running headless browsers, with Lambda-based orchestration, Cloudflare tunnel integration, and real-time screencast streaming via Socket.IO.
-
-**URL-agnostic** — configure for any target site, not just one.
+Infrastructure for browser-based authentication and web scraping. Manages a pool of EC2 instances running headless browsers, with Lambda-based orchestration, Cloudflare tunnel integration, and real-time screencast streaming via Socket.IO with low latency.
 
 ## Architecture
 
@@ -128,67 +126,12 @@ graph TB
 - **Request queueing** — When all instances are at capacity, requests queue with position tracking and estimated wait times
 - **Extraction manager** — Separate Lambda manages an on-demand extraction instance: auto-starts when work is queued, hibernates when idle, triggers extraction via SSM Run Command
 
-## Project Structure
 
-```
-aws-infra/
-├── lambda/                        # AWS Lambda functions
-│   ├── shared/                    # Shared config, EC2 ops, state store
-│   │   ├── config.js              # Scaling params, timeouts, AWS config
-│   │   ├── ec2-ops.js             # EC2 SDK: launch, start, stop, terminate
-│   │   └── state-store.js         # Supabase state management (20+ functions)
-│   ├── ec2-manager-assign/        # Assign auth requests to instances
-│   ├── ec2-manager-scaler/        # Auto-scale pool (EventBridge 30s)
-│   ├── ec2-manager-health/        # Health monitoring (EventBridge 60s)
-│   ├── ec2-manager-callback/      # Instance ready notifications
-│   └── extraction-manager/        # Extraction instance lifecycle
-├── ec2/                           # EC2 instance scripts
-│   ├── startup.sh                 # User data: tunnel + server + register
-│   └── register-instance.js       # Instance self-registration
-├── streaming-server/              # Socket.IO + Playwright auth server
-│   └── server.js                  # Multi-session streaming server
-├── extractors/                    # Content extraction plugins
-│   ├── base-extractor.js          # Extractor interface
-│   └── examples/canvas/           # Canvas LMS extractors (reference)
-├── api/streaming-auth/            # API route handlers
-│   ├── start.js                   # Start auth session
-│   └── viewer.js                  # Streaming viewer HTML
-├── config/
-│   └── site.js                    # URL-agnostic site configuration
-├── infra/                         # Infrastructure documentation
-│   ├── supabase-schema.sql        # Database tables + RPC functions
-│   ├── eventbridge-rules.json     # EventBridge rule definitions
-│   └── iam-policies.json          # IAM policy templates
-├── scripts/
-│   ├── deploy-lambdas.sh          # Deploy all Lambda functions
-│   └── deploy-streaming.sh        # Deploy streaming server to EC2
-├── .env.example                   # All environment variables documented
-└── package.json
-```
 
-## Configuration
-
-### URL-Agnostic Setup
-
-This infrastructure works with **any website** that requires browser-based authentication. Configure via environment variables:
-
-```bash
-# What site to authenticate against
-TARGET_URL=https://your-app.example.com
-TARGET_NAME=YourApp
-
-# How to detect successful login (comma-separated URL path patterns)
-LOGIN_SUCCESS_PATTERNS=/dashboard,/home,/app
-LOGIN_EXCLUDE_PATTERNS=/login,/auth,/sso,/oauth
-
-# Optional: navigate to a profile page after login to extract username
-POST_LOGIN_URL=https://your-app.example.com/settings/profile
-USERNAME_SELECTORS=#username-display,.user-name,input[name="username"]
-```
-
-The streaming server uses these patterns to detect when the user has successfully authenticated, then extracts all browser cookies for the target domain.
 
 ### Custom Extractors
+
+The streaming server detects when the user has successfully authenticated, then extracts all browser cookies for the target domain.
 
 Write content extractors by extending `BaseExtractor`:
 
@@ -214,13 +157,6 @@ class MyExtractor extends BaseExtractor {
 See `extractors/examples/canvas/` for working reference implementations.
 
 ## Deployment
-
-### Prerequisites
-
-- AWS account with EC2, Lambda, EventBridge, and IAM access
-- Custom EC2 AMI with Node.js, Playwright, Chromium, and cloudflared pre-installed
-- Supabase project (or any PostgreSQL with the schema from `infra/supabase-schema.sql`)
-- Cloudflare account (optional, for named tunnels)
 
 ### 1. Database Setup
 
@@ -259,22 +195,6 @@ Build a custom AMI with:
 bash scripts/deploy-streaming.sh <instance-id> <path-to-key.pem>
 ```
 
-## Cost Optimization
-
-| Component | Cost | Notes |
-|-----------|------|-------|
-| EC2 t3.small (warm pool) | ~$15/mo | 1 instance always warm |
-| EC2 t3.small (burst) | ~$0-30/mo | On-demand, hibernated when idle |
-| Lambda (5 functions) | ~$2/mo | ~86k invocations/month from EventBridge |
-| Supabase | Free tier | Sufficient for state management |
-| Cloudflare tunnel | Free | Named tunnels included in free plan |
-| **Total** | **~$17-47/mo** | Scales to 30 concurrent users |
-
-Key cost optimizations:
-- **Hibernation over termination**: 3x faster resume, no re-provisioning cost
-- **Burst scaling**: Only spins up extra instances when 2+ users are waiting
-- **Auto-shutdown**: Idle instances hibernate after 5 min, terminate after 1 hour
-- **EventBridge pricing**: rate(30 seconds) costs pennies compared to polling
 
 ## License
 
