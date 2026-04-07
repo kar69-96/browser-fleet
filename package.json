@@ -1,8 +1,8 @@
 {
-  "name": "aws-infra",
+  "name": "browser-fleet",
   "version": "2.0.0",
   "description": "Auto-scaling AWS infrastructure for browser-based authentication and web scraping with EC2 instance pooling, Lambda orchestration, and Cloudflare tunnel integration",
-  "private": true,
+  "private": false,
   "scripts": {
     "deploy:lambdas": "bash scripts/deploy-lambdas.sh",
     "deploy:streaming": "bash scripts/deploy-streaming.sh"

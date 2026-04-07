@@ -1,4 +1,4 @@
-# aws-infra
+# browser-fleet
 
 Infrastructure for browser-based authentication and web scraping. Manages a pool of EC2 instances running headless browsers, with Lambda-based orchestration, Cloudflare tunnel integration, and real-time screencast streaming via Socket.IO with low latency.
 
