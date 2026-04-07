@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "ec2-manager-scaler",
+      "description": "Auto-scale EC2 instance pool: process queue, scale up/down, ensure warm pool",
+      "scheduleExpression": "rate(30 seconds)",
+      "target": {
+        "lambdaFunction": "ec2-manager-scaler",
+        "input": "{\"source\": \"eventbridge\", \"action\": \"scale\"}"
+      },
+      "state": "ENABLED"
+    },
+    {
+      "name": "ec2-manager-health",
+      "description": "Health check all active/warm instances, terminate unhealthy ones",
+      "scheduleExpression": "rate(1 minute)",
+      "target": {
+        "lambdaFunction": "ec2-manager-health",
+        "input": "{\"source\": \"eventbridge\", \"action\": \"health-check\"}"
+      },
+      "state": "ENABLED"
+    },
+    {
+      "name": "extraction-manager",
+      "description": "Check extraction queue and auto-start/stop extraction instance",
+      "scheduleExpression": "rate(5 minutes)",
+      "target": {
+        "lambdaFunction": "extraction-manager",
+        "input": "{\"source\": \"eventbridge\", \"action\": \"check-extraction\"}"
+      },
+      "state": "ENABLED"
+    }
+  ],
+  "notes": {
+    "scaler_frequency": "30 seconds balances responsiveness with Lambda invocation costs (~$2/month)",
+    "health_interval": "60 seconds with 3-strike threshold = 3 min max detection time",
+    "extraction_interval": "5 minutes is sufficient since extractions run for hours"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "ec2-manager-health",
+  "version": "1.0.0",
+  "description": "Lambda function for health checking EC2 streaming instances",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.500.0",
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}

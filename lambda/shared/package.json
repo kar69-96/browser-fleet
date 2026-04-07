@@ -1,0 +1,13 @@
+{
+  "name": "ec2-manager-shared",
+  "version": "1.0.0",
+  "description": "Shared utilities for EC2 Manager Lambda functions",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.500.0",
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

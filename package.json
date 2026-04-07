@@ -1,37 +1,23 @@
 {
-  "name": "canvas-aws-infrastructure",
-  "version": "1.0.0",
-  "description": "AWS infrastructure for Canvas LMS data extraction with EC2 management, CloudWatch monitoring, and browser-based authentication",
-  "main": "scripts/aws/run-aws-extraction.js",
+  "name": "aws-infra",
+  "version": "2.0.0",
+  "description": "Auto-scaling AWS infrastructure for browser-based authentication and web scraping with EC2 instance pooling, Lambda orchestration, and Cloudflare tunnel integration",
+  "private": true,
   "scripts": {
-    "extract": "node scripts/aws/run-aws-extraction.js",
-    "deploy-streaming": "node scripts/aws/deploy-streaming.js",
-    "stop-instance": "node scripts/aws/force-stop-instance.js",
-    "update": "node scripts/utils/update.js",
-    "crawl": "node src/crawler/canvas-crawler.js"
+    "deploy:lambdas": "bash scripts/deploy-lambdas.sh",
+    "deploy:streaming": "bash scripts/deploy-streaming.sh"
   },
   "keywords": [
     "aws",
+    "lambda",
     "ec2",
-    "canvas-lms",
-    "web-extraction",
-    "cloudwatch",
+    "auto-scaling",
     "playwright",
-    "crawlee"
+    "browser-automation",
+    "authentication",
+    "web-scraping",
+    "cloudflare-tunnel",
+    "socket.io"
   ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@aws-sdk/client-cloudwatch": "^3.490.0",
-    "@aws-sdk/client-cloudwatch-logs": "^3.490.0",
-    "@aws-sdk/client-ec2": "^3.490.0",
-    "crawlee": "^3.7.0",
-    "express": "^4.18.2",
-    "playwright": "^1.40.0",
-    "socket.io": "^4.7.2"
-  },
-  "devDependencies": {},
-  "engines": {
-    "node": ">=18.0.0"
-  }
+  "license": "MIT"
 }

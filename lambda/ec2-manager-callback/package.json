@@ -1,0 +1,9 @@
+{
+  "name": "ec2-manager-callback",
+  "version": "1.0.0",
+  "description": "Lambda function for receiving EC2 instance ready callbacks",
+  "main": "index.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
+}

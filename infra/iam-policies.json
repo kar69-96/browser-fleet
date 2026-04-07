@@ -1,0 +1,88 @@
+{
+  "policies": [
+    {
+      "name": "EC2ManagerLambdaPolicy",
+      "description": "IAM policy for ec2-manager-* Lambda functions (assign, scaler, health, callback)",
+      "statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "ec2:RunInstances",
+            "ec2:StartInstances",
+            "ec2:StopInstances",
+            "ec2:TerminateInstances",
+            "ec2:DescribeInstances",
+            "ec2:CreateTags"
+          ],
+          "Resource": "*",
+          "Condition": {
+            "StringEquals": {
+              "aws:RequestedRegion": "${AWS_REGION}"
+            }
+          }
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "iam:PassRole"
+          ],
+          "Resource": "arn:aws:iam::*:role/${EC2_INSTANCE_ROLE}",
+          "Condition": {
+            "StringEquals": {
+              "iam:PassedToService": "ec2.amazonaws.com"
+            }
+          }
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Resource": "arn:aws:logs:*:*:*"
+        }
+      ]
+    },
+    {
+      "name": "ExtractionManagerLambdaPolicy",
+      "description": "IAM policy for extraction-manager Lambda (needs SSM for remote commands)",
+      "statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "ec2:DescribeInstances",
+            "ec2:StartInstances",
+            "ec2:StopInstances"
+          ],
+          "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "ssm:SendCommand",
+            "ssm:GetCommandInvocation"
+          ],
+          "Resource": [
+            "arn:aws:ssm:*:*:document/AWS-RunShellScript",
+            "arn:aws:ec2:*:*:instance/${EXTRACTION_INSTANCE_ID}"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ],
+          "Resource": "arn:aws:logs:*:*:*"
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "supabase": "Lambda functions connect to Supabase via HTTPS using service key — no AWS IAM policy needed for Supabase access",
+    "ec2_scope": "Consider restricting ec2:* actions to instances tagged with your SERVICE_TAG for tighter security",
+    "secrets": "Store SUPABASE_SERVICE_KEY and INTERNAL_API_KEY in Lambda environment variables (encrypted at rest by default) or AWS Secrets Manager"
+  }
+}
