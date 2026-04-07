@@ -5,57 +5,25 @@ Infrastructure for browser-based authentication and web scraping. Manages a pool
 ## Architecture
 
 ```mermaid
-graph TB
-    subgraph Client
-        U[User Browser]
+graph LR
+    User -->|POST /start| API
+    API --> Assign[Lambda: Assign]
+    Assign --> DB[(Supabase)]
+    Assign --> Pool
+
+    EventBridge -->|30s| Scaler[Lambda: Scaler]
+    EventBridge -->|60s| Health[Lambda: Health]
+    Scaler --> DB
+    Scaler --> Pool
+    Health --> Pool
+
+    subgraph Pool[EC2 Pool · 1-10 instances]
+        EC2[Playwright + Socket.IO]
     end
 
-    subgraph "API Layer"
-        AG[API Gateway]
-        VS[Vercel Serverless]
-    end
-
-    subgraph "Lambda Orchestration"
-        LA[ec2-manager-assign]
-        LS[ec2-manager-scaler]
-        LH[ec2-manager-health]
-        LC[ec2-manager-callback]
-        LE[extraction-manager]
-    end
-
-    subgraph "EventBridge"
-        EB1[Every 30s → Scaler]
-        EB2[Every 60s → Health]
-        EB3[Every 5m → Extraction]
-    end
-
-    subgraph "EC2 Instance Pool (1-10)"
-        E1[Instance 1<br/>Playwright + Socket.IO<br/>Max 3 sessions]
-        E2[Instance 2<br/>...]
-        EN[Instance N<br/>...]
-    end
-
-    subgraph "Cloudflare"
-        CF[Named Tunnel<br/>Stable HTTPS URL]
-    end
-
-    subgraph "State Store"
-        SB[(Supabase PostgreSQL<br/>Instances · Requests · Events)]
-    end
-
-    U -->|POST /start| VS
-    VS -->|Assign request| AG --> LA
-    LA -->|Find/launch instance| SB
-    LA -->|Start instance| E1
-
-    EB1 --> LS -->|Scale up/down| SB
-    EB2 --> LH -->|Ping /health| E1
-    EB3 --> LE -->|Start/hibernate| E1
-
-    E1 -->|Ready callback| LC --> SB
-    E1 <-->|Tunnel| CF
-    U <-->|Socket.IO via tunnel| CF
-    CF <-->|WebSocket + CDP screencast| E1
+    Pool -->|Ready callback| Callback[Lambda: Callback] --> DB
+    Pool <--> Tunnel[Cloudflare Tunnel]
+    User <-->|Screencast via WebSocket| Tunnel
 ```
 
 ## How It Works
