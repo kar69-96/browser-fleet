@@ -10,6 +10,8 @@ Worked well (as long as the user knows what you're doing)!
 
 ## Context for your agent:
 
+Here's a bunch of context so that your agent knows how this works and is able to use it best. 
+
 Infrastructure for browser-based authentication and web scraping. Manages a pool of EC2 instances running headless browsers, with Lambda-based orchestration, Cloudflare tunnel integration, and real-time screencast streaming via Socket.IO with low latency.
 
 
