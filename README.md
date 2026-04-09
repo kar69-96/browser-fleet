@@ -4,7 +4,7 @@ Browser-fleet is a way to manage different sessions on the cloud, where you can 
 
 Here's the way I used it for one of my side projects: my users wanted a way to import their data without moving everything manually. Their data was behind a login-gate, so I used Browser-fleet to spin up a headless browser on AWS, project to their computer, have them log in, and use their cookies to crawl and download their data.
 
-Worked well (as long as the user knows what you're doing)!
+Worked suprisingly well!
 
 
 
