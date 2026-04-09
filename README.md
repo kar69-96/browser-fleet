@@ -1,4 +1,13 @@
-# browser-fleet
+# Browser-fleet!
+
+Browser-fleet is a way to manage different sessions on the cloud, where you can see and interact with all of the different windows. 
+
+Here's the way I used it for one of my side projects: my users wanted a way to import their data without moving everything manually. Their data was behind a login-gate, so I used Browser-fleet to spin up a headless browser on AWS, project to their computer, have them log in, and use their cookies to crawl and download their data.
+
+Worked well (as long as the user knows what you're doing)!
+
+
+## Context for your agent:
 
 Infrastructure for browser-based authentication and web scraping. Manages a pool of EC2 instances running headless browsers, with Lambda-based orchestration, Cloudflare tunnel integration, and real-time screencast streaming via Socket.IO with low latency.
 
