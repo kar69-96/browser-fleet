@@ -7,11 +7,13 @@ Here's the way I used it for one of my side projects: my users wanted a way to i
 Worked well (as long as the user knows what you're doing)!
 
 
+
 ## Context for your agent:
 
 Infrastructure for browser-based authentication and web scraping. Manages a pool of EC2 instances running headless browsers, with Lambda-based orchestration, Cloudflare tunnel integration, and real-time screencast streaming via Socket.IO with low latency.
 
-## Architecture
+
+### Architecture
 
 ```mermaid
 graph LR
@@ -35,9 +37,9 @@ graph LR
     User <-->|Screencast via WebSocket| Tunnel
 ```
 
-## How It Works
+### How It Works
 
-### Authentication Flow
+#### Authentication Flow
 
 1. **User requests login** → `POST /api/streaming-auth/start`
 2. **Assign Lambda** finds a warm instance with capacity, or resumes a hibernated one, or launches new
@@ -47,7 +49,7 @@ graph LR
 6. On login detection, **cookies are extracted** and the session closes
 7. Instance stays warm for the next user
 
-### Instance Lifecycle
+#### Instance Lifecycle
 
 ```
                     ┌──────────┐
@@ -80,7 +82,7 @@ graph LR
                  └──────────────┘
 ```
 
-### Scaling Strategy
+#### Scaling Strategy
 
 | Condition | Action |
 |-----------|--------|
@@ -92,7 +94,7 @@ graph LR
 
 **Capacity**: 10 instances × 3 sessions = **30 concurrent users**
 
-## Key Features
+### Key Features
 
 - **Lambda-based auto-scaling** — 5 Lambda functions orchestrate a pool of 1-10 EC2 instances, triggered by EventBridge rules every 30-60 seconds
 - **EC2 hibernation** — Instances hibernate instead of stopping, reducing resume time from ~90s (cold start) to ~30s
@@ -106,7 +108,7 @@ graph LR
 
 
 
-### Custom Extractors
+#### Custom Extractors
 
 The streaming server detects when the user has successfully authenticated, then extracts all browser cookies for the target domain.
 
@@ -133,9 +135,9 @@ class MyExtractor extends BaseExtractor {
 
 See `extractors/examples/canvas/` for working reference implementations.
 
-## Deployment
+### Deployment
 
-### 1. Database Setup
+#### 1. Database Setup
 
 Apply the schema to your Supabase project:
 
@@ -143,7 +145,7 @@ Apply the schema to your Supabase project:
 psql $DATABASE_URL < infra/supabase-schema.sql
 ```
 
-### 2. Deploy Lambda Functions
+#### 2. Deploy Lambda Functions
 
 ```bash
 # Set environment variables for each Lambda (via AWS Console or CLI)
@@ -151,14 +153,14 @@ psql $DATABASE_URL < infra/supabase-schema.sql
 bash scripts/deploy-lambdas.sh
 ```
 
-### 3. Configure EventBridge Rules
+#### 3. Configure EventBridge Rules
 
 Create the three scheduled rules defined in `infra/eventbridge-rules.json`:
 - `ec2-manager-scaler`: rate(30 seconds)
 - `ec2-manager-health`: rate(1 minute)
 - `extraction-manager`: rate(5 minutes)
 
-### 4. Prepare EC2 AMI
+#### 4. Prepare EC2 AMI
 
 Build a custom AMI with:
 - Node.js 18+
@@ -166,13 +168,13 @@ Build a custom AMI with:
 - cloudflared
 - PM2 (`npm install -g pm2`)
 
-### 5. Deploy Streaming Server
+#### 5. Deploy Streaming Server
 
 ```bash
 bash scripts/deploy-streaming.sh <instance-id> <path-to-key.pem>
 ```
 
 
-## License
+### License
 
 MIT
